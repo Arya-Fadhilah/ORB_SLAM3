@@ -66,6 +66,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     else if(mSensor==IMU_RGBD)
         cout << "RGB-D-Inertial" << endl;
 
+    mStrSettingsFilePath = strSettingsFile;   // <-- baru
+
     //Check settings file
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
     if(!fsSettings.isOpened())
@@ -317,6 +319,13 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
 
     // std::cout << "out grabber" << std::endl;
 
+    if (!mpOccupancyBuilder && mpAtlas && mpAtlas->GetCurrentMap() && 
+    mpAtlas->GetCurrentMap()->KeyFramesInMap() > 0) {
+        std::cout << "[System] Starting OccupancyGridBuilder..." << std::endl;
+        mpOccupancyBuilder = new OccupancyGridBuilder(mpAtlas->GetCurrentMap(), mStrSettingsFilePath, settings_);
+        mpOccupancyThread = new std::thread(&OccupancyGridBuilder::Run, mpOccupancyBuilder);
+    }
+
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
@@ -464,6 +473,14 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
             mpTracker->GrabImuData(vImuMeas[i_imu]);
 
     Sophus::SE3f Tcw = mpTracker->GrabImageMonocular(imToFeed,timestamp,filename);
+    
+    // Launch grid builder once tracking has started; re-bind if Atlas switches map
+    if (!mpOccupancyBuilder && mpAtlas && mpAtlas->GetCurrentMap() && 
+    mpAtlas->GetCurrentMap()->KeyFramesInMap() > 0) {
+        std::cout << "[System] Starting OccupancyGridBuilder..." << std::endl;
+        mpOccupancyBuilder = new OccupancyGridBuilder(mpAtlas->GetCurrentMap(), mStrSettingsFilePath, settings_);
+        mpOccupancyThread = new std::thread(&OccupancyGridBuilder::Run, mpOccupancyBuilder);
+    }
 
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
@@ -523,27 +540,24 @@ void System::Shutdown()
 
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
-    /*if(mpViewer)
-    {
-        mpViewer->RequestFinish();
-        while(!mpViewer->isFinished())
-            usleep(5000);
-    }*/
+    
+    // Step 1: Ask occupancy grid builder to finish
+    if(mpOccupancyBuilder) {
+        mpOccupancyBuilder->RequestFinish();
+    }
 
-    // Wait until all thread have effectively stopped
-    /*while(!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
-    {
-        if(!mpLocalMapper->isFinished())
-            cout << "mpLocalMapper is not finished" << endl;*/
-        /*if(!mpLoopCloser->isFinished())
-            cout << "mpLoopCloser is not finished" << endl;
-        if(mpLoopCloser->isRunningGBA()){
-            cout << "mpLoopCloser is running GBA" << endl;
-            cout << "break anyway..." << endl;
-            break;
-        }*/
-        /*usleep(5000);
-    }*/
+    // Step 2: Wait for thread to finish and clean up thread object
+    if(mpOccupancyThread) {
+        mpOccupancyThread->join();
+        delete mpOccupancyThread;
+        mpOccupancyThread = nullptr;
+    }
+
+    // Step 3: Now it's safe to delete the builder object
+    if(mpOccupancyBuilder) {
+        delete mpOccupancyBuilder;
+        mpOccupancyBuilder = nullptr;
+    }
 
     if(!mStrSaveAtlasToFile.empty())
     {
@@ -564,6 +578,21 @@ void System::Shutdown()
 bool System::isShutDown() {
     unique_lock<mutex> lock(mMutexReset);
     return mbShutDown;
+}
+
+cv::Mat System::GetOccupancyGrid() {
+    if (!mpOccupancyBuilder) return cv::Mat();
+    return mpOccupancyBuilder->GetOccupancyGrid();
+}
+
+bool System::GetOccupancyGridMetadata(float &resolution, float &originX, float &originY, int &width, int &height) {
+    if (!mpOccupancyBuilder) return false;
+    resolution = mpOccupancyBuilder->GetResolution();
+    originX = mpOccupancyBuilder->GetOriginX();
+    originY = mpOccupancyBuilder->GetOriginY();
+    width = mpOccupancyBuilder->GetWidth();
+    height = mpOccupancyBuilder->GetHeight();
+    return true;
 }
 
 void System::SaveTrajectoryTUM(const string &filename)
@@ -1261,6 +1290,65 @@ void System::SaveTrajectoryKITTI(const string &filename)
     f.close();
 }
 
+void System::SavePointCloud(const string &filename)
+{
+    cout << endl << "Saving point cloud to " << filename << " ..." << endl;
+    vector<Map*> vpMaps = mpAtlas->GetAllMaps();
+
+    for(size_t i = 0; i < vpMaps.size(); i++)
+    {
+        Map* pMap = vpMaps[i];
+        if(!pMap || pMap->IsBad()) continue;
+
+        const vector<MapPoint*> vpMPs = pMap->GetAllMapPoints();
+        if(vpMPs.empty()) continue;
+
+        vector<Eigen::Vector3f> vPos;
+        for(auto* pMP : vpMPs) {
+            if(!pMP || pMP->isBad()) continue;
+            Eigen::Vector3f p = pMP->GetWorldPos();
+            if(!p.allFinite()) continue;   // buang NaN/Inf
+            vPos.push_back(p);
+        }
+        if(vPos.empty()) continue;
+
+        auto median = [](vector<float> v){
+            size_t n = v.size()/2;
+            nth_element(v.begin(), v.begin()+n, v.end());
+            return v[n];
+        };
+
+        vector<float> xs, ys, zs;
+        for(auto &p : vPos){ xs.push_back(p.x()); ys.push_back(p.y()); zs.push_back(p.z()); }
+        Eigen::Vector3f centroid(median(xs), median(ys), median(zs));
+
+        vector<float> dists;
+        for(auto &p : vPos) dists.push_back((p - centroid).norm());
+        float medDist = median(dists);
+
+        vector<float> devs;
+        for(float d : dists) devs.push_back(fabs(d - medDist));
+        float mad = median(devs) + 1e-6f;
+
+        vector<Eigen::Vector3f> vClean;
+        int nOut = 0;
+        for(size_t j = 0; j < vPos.size(); j++){
+            if(fabs(dists[j]-medDist)/mad > 15.0f) { nOut++; continue; }  // 15 = ambang, makin besar makin longgar
+            vClean.push_back(vPos[j]);
+        }
+        cout << "Map " << pMap->GetId() << ": " << vPos.size() << " valid, "
+             << nOut << " dibuang (outlier), " << vClean.size() << " ditulis." << endl;
+        if(vClean.empty()) continue;
+
+        string mapFilename = "map" + to_string(pMap->GetId()) + "_" + filename;
+        ofstream f(mapFilename.c_str());
+        f << fixed << "ply\nformat ascii 1.0\n";
+        f << "element vertex " << vClean.size() << "\n";
+        f << "property float x\nproperty float y\nproperty float z\nend_header\n";
+        for(auto &p : vClean) f << p.x() << " " << p.y() << " " << p.z() << "\n";
+        f.close();
+    }
+}
 
 void System::SaveDebugData(const int &initIdx)
 {

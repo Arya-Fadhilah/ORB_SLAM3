@@ -33,7 +33,11 @@
 
 #include <mutex>
 #include <chrono>
-
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+//#include <opencv2/imgproc/imgproc_c.h>
+//#include <opencv2/types_c.h>
 
 using namespace std;
 

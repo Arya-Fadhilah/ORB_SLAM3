@@ -31,6 +31,7 @@
 #include "Tracking.h"
 #include "FrameDrawer.h"
 #include "MapDrawer.h"
+#include "OccupancyGridBuilder.h"
 #include "Atlas.h"
 #include "LocalMapping.h"
 #include "LoopClosing.h"
@@ -79,7 +80,7 @@ class Tracking;
 class LocalMapping;
 class LoopClosing;
 class Settings;
-
+class OccupancyGridBuilder;
 class System
 {
 public:
@@ -139,6 +140,8 @@ public:
     // This function must be called before saving the trajectory.
     void Shutdown();
     bool isShutDown();
+    cv::Mat GetOccupancyGrid();
+    bool GetOccupancyGridMetadata(float &resolution, float &originX, float &originY, int &width, int &height);
 
     // Save camera trajectory in the TUM RGB-D dataset format.
     // Only for stereo and RGB-D. This method does not work for monocular.
@@ -157,6 +160,8 @@ public:
 
     void SaveTrajectoryEuRoC(const string &filename, Map* pMap);
     void SaveKeyFrameTrajectoryEuRoC(const string &filename, Map* pMap);
+
+    void SavePointCloud(const string &filename);
 
     // Save data used for initialization debug
     void SaveDebugData(const int &iniIdx);
@@ -230,6 +235,10 @@ private:
     FrameDrawer* mpFrameDrawer;
     MapDrawer* mpMapDrawer;
 
+    std::thread* mpOccupancyThread;
+    ORB_SLAM3::OccupancyGridBuilder* mpOccupancyBuilder;
+    Map* mpLastOccupancyMap = nullptr;
+
     // System threads: Local Mapping, Loop Closing, Viewer.
     // The Tracking thread "lives" in the main execution thread that creates the System object.
     std::thread* mptLocalMapping;
@@ -260,6 +269,7 @@ private:
     string mStrSaveAtlasToFile;
 
     string mStrVocabularyFilePath;
+    string mStrSettingsFilePath;
 
     Settings* settings_;
 };

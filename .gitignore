@@ -91,3 +91,15 @@ my_settings.txt
 borrar/*
 
 */ExecMean.txt
+
+# Dataset — jangan commit, download terpisah dari sumber resmi
+Examples/Monocular/sequences/
+Examples/Monocular-Inertial/TUM_IMU/
+Examples/Stereo-Inertial/TUM_IMU/
+
+# Dependency eksternal — clone terpisah sesuai README ORB-SLAM3 asli
+Pangolin/
+Thirdparty/eigen/
+
+# Tidak dipakai
+PymonoSLAM/
