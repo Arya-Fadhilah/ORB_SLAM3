@@ -178,6 +178,10 @@ add_executable(stereo_tum_vi
         Examples/Stereo/stereo_tum_vi.cc)
 target_link_libraries(stereo_tum_vi ${PROJECT_NAME})
 
+add_executable(stereo_usvinland
+        Examples/Stereo/stereo_usvinland.cc)
+target_link_libraries(stereo_usvinland ${PROJECT_NAME})
+
 if(realsense2_FOUND)
     add_executable(stereo_realsense_t265
             Examples/Stereo/stereo_realsense_t265.cc)
@@ -207,6 +211,10 @@ add_executable(mono_tum_vi
         Examples/Monocular/mono_tum_vi.cc)
 target_link_libraries(mono_tum_vi ${PROJECT_NAME})
 
+add_executable(mono_usvinland 
+        Examples/Monocular/mono_usvinland.cc)
+target_link_libraries(mono_usvinland ${PROJECT_NAME})
+
 if(realsense2_FOUND)
     add_executable(mono_realsense_t265
             Examples/Monocular/mono_realsense_t265.cc)
@@ -227,6 +235,10 @@ target_link_libraries(mono_inertial_euroc ${PROJECT_NAME})
 add_executable(mono_inertial_tum_vi
         Examples/Monocular-Inertial/mono_inertial_tum_vi.cc)
 target_link_libraries(mono_inertial_tum_vi ${PROJECT_NAME})
+
+add_executable(mono_inertial_usvinland
+        Examples/Monocular-Inertial/mono_inertial_usvinland.cc)
+target_link_libraries(mono_inertial_usvinland ${PROJECT_NAME})
 
 if(realsense2_FOUND)
     add_executable(mono_inertial_realsense_t265

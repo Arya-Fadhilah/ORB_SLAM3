@@ -161,7 +161,7 @@ public:
     void SaveTrajectoryEuRoC(const string &filename, Map* pMap);
     void SaveKeyFrameTrajectoryEuRoC(const string &filename, Map* pMap);
 
-    void SavePointCloud(const string &filename);
+    void SavePointCloud(const string &filename, int minKeyFrames = 0);
 
     // Save data used for initialization debug
     void SaveDebugData(const int &iniIdx);
@@ -180,6 +180,7 @@ public:
     // You can call this right after TrackMonocular (or stereo or RGBD)
     int GetTrackingState();
     std::vector<MapPoint*> GetTrackedMapPoints();
+    std::vector<MapPoint*> GetAllCurrentMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
 
     // For debugging

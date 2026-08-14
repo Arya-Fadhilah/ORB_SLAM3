@@ -94,6 +94,13 @@ private:
     float mMinVoxelPoints = 20.0f;   // was 20 — coba-coba, turunkan lagi kalau OGM masih terlalu bolong
     int mMinTotalPoints = 50;       // was 50 — coba-coba, ini early-return threshold total titik per siklus
 
+    // --- Toggle untuk isolasi pengaruh masing-masing filter (eksperimen tuning, Integrasi #3) ---
+    bool mEnableDistanceFilter = true;    // kalau false, distanceThreshold diabaikan total
+    float mDistanceThreshold = 3.0f;      // nilai dipakai HANYA kalau mEnableDistanceFilter = true
+
+    bool mEnableVoxelCountFilter = true;  // kalau false, semua voxel lolos apapun jumlah titiknya
+    bool mEnableMinTotalFilter = true;    // kalau false, BuildOccupancyGrid tetap lanjut walau allPoints sedikit
+    
     // Viewport window over the occupancy grid
     cv::Rect mViewWindow;
     cv::Point mDragStart;

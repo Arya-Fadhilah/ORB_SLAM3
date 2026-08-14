@@ -164,8 +164,7 @@ std::vector<Eigen::Vector3f> OccupancyGridBuilder::VoxelGridFilter(const std::ve
         if (voxelPoints.empty()) continue;
         
          // NEW CONDITION: Only process voxels with more than 20 points
-        if (voxelPoints.size() <= static_cast<size_t>(mMinVoxelPoints)) {
-            // Skip this voxel - do not add any points to filtered result
+        if (mEnableVoxelCountFilter && voxelPoints.size() <= static_cast<size_t>(mMinVoxelPoints)) {
             continue;
         }
         
@@ -453,7 +452,6 @@ void OccupancyGridBuilder::BuildOccupancyGrid() {
 
     float minDepth = 0.9f;
     float maxDepth = 8.0f;
-    float distanceThreshold = 10.0f;
 
     Eigen::Matrix3f Rcw = Tcw.rotationMatrix();
     Eigen::Vector3f tcw = Tcw.translation();
@@ -471,13 +469,15 @@ void OccupancyGridBuilder::BuildOccupancyGrid() {
 
         if (u < 0 || u >= imageWidth || v < 0 || v >= imageHeight) continue;
 
-        float distance = (Pw - camPos).norm();
-        if (distance > distanceThreshold) continue;
+        if (mEnableDistanceFilter) {
+            float distance = (Pw - camPos).norm();
+            if (distance > mDistanceThreshold) continue;
+        }
 
         allPoints.push_back(Pw);
     }
 
-    if (allPoints.size() < static_cast<size_t>(mMinTotalPoints)) return;
+    if (mEnableMinTotalFilter && allPoints.size() < static_cast<size_t>(mMinTotalPoints)) return;
 
     std::srand(0);
     int maxInliers = 0;

@@ -1290,42 +1290,50 @@ void System::SaveTrajectoryKITTI(const string &filename)
     f.close();
 }
 
-void System::SavePointCloud(const string &filename)
+void System::SavePointCloud(const string &filename, int minKeyFrames)
 {
     cout << endl << "Saving point cloud to " << filename << " ..." << endl;
     vector<Map*> vpMaps = mpAtlas->GetAllMaps();
+    cout << "Number of maps in Atlas: " << vpMaps.size() << endl;
+    cout << "----------------------------------------" << endl;
 
     for(size_t i = 0; i < vpMaps.size(); i++)
     {
         Map* pMap = vpMaps[i];
         if(!pMap || pMap->IsBad()) continue;
 
+        int nKFs = pMap->GetAllKeyFrames().size();
         const vector<MapPoint*> vpMPs = pMap->GetAllMapPoints();
-        if(vpMPs.empty()) continue;
+
+        cout << "Map " << pMap->GetId() << ": " << nKFs << " keyframes, "
+             << vpMPs.size() << " raw points";
+
+        if(nKFs < minKeyFrames) {
+            cout << "  -> SKIPPED (below threshold " << minKeyFrames << ")" << endl;
+            continue;
+        }
 
         vector<Eigen::Vector3f> vPos;
         for(auto* pMP : vpMPs) {
             if(!pMP || pMP->isBad()) continue;
             Eigen::Vector3f p = pMP->GetWorldPos();
-            if(!p.allFinite()) continue;   // buang NaN/Inf
+            if(!p.allFinite()) continue;
             vPos.push_back(p);
         }
-        if(vPos.empty()) continue;
+        if(vPos.empty()) { cout << "  -> SKIPPED (no valid points)" << endl; continue; }
 
+        // median/MAD outlier filter (sama seperti sebelumnya)
         auto median = [](vector<float> v){
             size_t n = v.size()/2;
             nth_element(v.begin(), v.begin()+n, v.end());
             return v[n];
         };
-
         vector<float> xs, ys, zs;
         for(auto &p : vPos){ xs.push_back(p.x()); ys.push_back(p.y()); zs.push_back(p.z()); }
         Eigen::Vector3f centroid(median(xs), median(ys), median(zs));
-
         vector<float> dists;
         for(auto &p : vPos) dists.push_back((p - centroid).norm());
         float medDist = median(dists);
-
         vector<float> devs;
         for(float d : dists) devs.push_back(fabs(d - medDist));
         float mad = median(devs) + 1e-6f;
@@ -1333,12 +1341,9 @@ void System::SavePointCloud(const string &filename)
         vector<Eigen::Vector3f> vClean;
         int nOut = 0;
         for(size_t j = 0; j < vPos.size(); j++){
-            if(fabs(dists[j]-medDist)/mad > 15.0f) { nOut++; continue; }  // 15 = ambang, makin besar makin longgar
+            if(fabs(dists[j]-medDist)/mad > 15.0f) { nOut++; continue; }
             vClean.push_back(vPos[j]);
         }
-        cout << "Map " << pMap->GetId() << ": " << vPos.size() << " valid, "
-             << nOut << " dibuang (outlier), " << vClean.size() << " ditulis." << endl;
-        if(vClean.empty()) continue;
 
         string mapFilename = "map" + to_string(pMap->GetId()) + "_" + filename;
         ofstream f(mapFilename.c_str());
@@ -1347,7 +1352,11 @@ void System::SavePointCloud(const string &filename)
         f << "property float x\nproperty float y\nproperty float z\nend_header\n";
         for(auto &p : vClean) f << p.x() << " " << p.y() << " " << p.z() << "\n";
         f.close();
+
+        cout << "  -> saved " << vClean.size() << " points (" << nOut
+             << " outliers removed) -> " << mapFilename << endl;
     }
+    cout << "----------------------------------------" << endl;
 }
 
 void System::SaveDebugData(const int &initIdx)
@@ -1416,6 +1425,11 @@ vector<MapPoint*> System::GetTrackedMapPoints()
 {
     unique_lock<mutex> lock(mMutexState);
     return mTrackedMapPoints;
+}
+
+std::vector<MapPoint*> System::GetAllCurrentMapPoints()
+{
+    return mpAtlas->GetCurrentMap()->GetAllMapPoints();
 }
 
 vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()

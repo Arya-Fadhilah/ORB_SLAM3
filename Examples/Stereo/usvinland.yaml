@@ -1,0 +1,93 @@
+%YAML:1.0
+
+# =============================================================================
+# CATATAN PENTING — BACA SEBELUM PAKAI:
+# Tidak ada file kalibrasi resmi yang ditemukan di dataset USVInland yang kamu
+# download. Angka fx/fy/cx/cy di bawah ini adalah ESTIMASI dari spesifikasi FOV
+# yang tercantum di paper/website resmi (Mynteye S2110-95: HFoV 95, VFoV 50),
+# BUKAN hasil kalibrasi checkerboard aktual terhadap unit fisik mereka.
+#
+# Asumsi yang dipakai:
+# - Resolusi 640x400 (bukan 1280x800 -- SESUAIKAN kalau ternyata gambar kamu
+#   resolusi tinggi, cek dengan: python3 -c "import cv2; print(cv2.imread('cam0/0000000000.jpg').shape)")
+# - Gambar sudah RECTIFIED -> distortion coefficient diset nol
+# - Principal point diasumsikan di tengah gambar (bukan nilai kalibrasi asli)
+# - Mode STEREO murni (bukan stereo-inertial) -- karena Tbc dan noise IMU
+#   tidak diketahui dan berisiko memperburuk hasil kalau salah asumsi
+# =============================================================================
+
+File.version: "1.0"
+
+Camera.type: "PinHole"
+
+# --- Intrinsik LEFT (cam0), estimasi dari FOV ---
+Camera1.fx: 293.4
+Camera1.fy: 428.8
+Camera1.cx: 320.0
+Camera1.cy: 200.0
+Camera1.k1: 0.0
+Camera1.k2: 0.0
+Camera1.p1: 0.0
+Camera1.p2: 0.0
+
+# --- Intrinsik RIGHT (cam1) -- diasumsikan identik dengan LEFT ---
+# (wajar untuk stereo rig yang sama modelnya, tapi ini juga asumsi, bukan
+# hasil kalibrasi masing-masing lensa yang biasanya sedikit berbeda)
+Camera2.fx: 293.4
+Camera2.fy: 428.8
+Camera2.cx: 320.0
+Camera2.cy: 200.0
+Camera2.k1: 0.0
+Camera2.k2: 0.0
+Camera2.p1: 0.0
+Camera2.p2: 0.0
+
+Stereo.T_c1_c2: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: f
+   data: [1.0, 0.0, 0.0, 0.08,
+          0.0, 1.0, 0.0, 0.0,
+          0.0, 0.0, 1.0, 0.0,
+          0.0, 0.0, 0.0, 1.0]
+
+Camera.width: 640
+Camera.height: 400
+
+Camera.fps: 20
+
+# 0 untuk RGB, 1 untuk BGR (OpenCV default BGR saat imread -- pakai 0 kalau
+# tidak yakin, ORB-SLAM3 konversi ke grayscale internal jadi dampaknya minim)
+Camera.RGB: 1
+
+# --- Stereo baseline ---
+# 80mm dari spek resmi Mynteye S2110-95 (ini angka fisik nominal, lebih bisa
+# dipercaya dibanding fx/fy hasil estimasi FOV di atas)
+# Camera.bf = baseline(meter) * fx
+Stereo.b: 0.08
+
+# Threshold jarak untuk membedakan titik "dekat" vs "jauh" (dalam satuan baseline)
+Stereo.ThDepth: 35.0
+
+#--------------------------------------------------------------------------------------------
+# ORB Parameters (nilai default umum ORB-SLAM3, belum ada alasan spesifik untuk diubah)
+#--------------------------------------------------------------------------------------------
+ORBextractor.nFeatures: 1500
+ORBextractor.scaleFactor: 1.2
+ORBextractor.nLevels: 8
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters
+#--------------------------------------------------------------------------------------------
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1.0
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2.0
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3.0
+Viewer.ViewpointX: 0.0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -1.8
+Viewer.ViewpointF: 500.0
