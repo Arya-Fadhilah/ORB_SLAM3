@@ -41,3 +41,4 @@ map.yaml
 
 # Sequence data (likely large dataset files)
 Examples/Monocular/sequences/
+Thirdparty/g2o/config.h
