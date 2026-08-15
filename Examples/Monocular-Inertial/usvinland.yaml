@@ -1,0 +1,84 @@
+%YAML:1.0
+
+# =============================================================================
+# CATATAN PENTING — INI EKSPERIMEN SEKALI-JALAN, BUKAN SETUP FINAL:
+#
+# IMU.T_b_c1 (Tbc) dan IMU.NoiseGyro/NoiseAcc/GyroWalk/AccWalk di bawah ini
+# adalah PLACEHOLDER, bukan hasil kalibrasi asli terhadap unit Mynt Eye
+# S2110-95 yang dipakai USVInland. Alasan kenapa ini tetap dicoba meski
+# belum dikalibrasi:
+#   - Tbc: diasumsikan identity (kamera & IMU dianggap co-located, tidak ada
+#     rotasi/translasi relatif) -- ini kasar, karena secara fisik IMU dan
+#     lensa kamera di modul Mynt Eye tidak persis di titik yang sama.
+#   - Noise parameter: dipinjam dari referensi umum EuRoC (IMU ADIS16448,
+#     200Hz -- kebetulan frequency-nya sama dengan spek Mynt Eye S2110-95),
+#     BUKAN dari Allan variance data USVInland sendiri.
+#   - Satuan data mentah IMU.csv (g vs m/s^2, deg/s vs rad/s) masih asumsi,
+#     BELUM PERNAH divalidasi -- lihat komentar TODO VERIFIKASI di kode .cc.
+#
+# Kalau tracking gagal/lost terus-menerus atau hasil jelas lebih buruk dari
+# mono/stereo murni: JANGAN coba tuning noise parameter berulang-ulang.
+# Anggap eksperimen ini selesai, dokumentasikan sebagai percobaan yang
+# tidak dilanjutkan karena kalibrasi IMU tidak tersedia.
+# =============================================================================
+
+File.version: "1.0"
+
+Camera.type: "PinHole"
+
+Camera1.fx: 197.39641213416058
+Camera1.fy: 197.72337597617189
+Camera1.cx: 326.11983633916327
+Camera1.cy: 199.86969132833946
+Camera1.k1: 0.0
+Camera1.k2: 0.0
+Camera1.p1: 0.0
+Camera1.p2: 0.0
+
+Camera.width: 640
+Camera.height: 400
+Camera.fps: 20
+Camera.RGB: 1
+
+#--------------------------------------------------------------------------------------------
+# IMU Parameters -- SEMUA PLACEHOLDER, lihat catatan di atas
+#--------------------------------------------------------------------------------------------
+
+IMU.T_b_c1: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: f
+   data: [1.0,  0.0,  0.0, -0.1919,
+          0.0,  0.0,  1.0,  0.1767,
+          0.0, -1.0,  0.0, -0.0311,
+          0.0,  0.0,  0.0,  1.0]
+
+IMU.NoiseGyro: 1.14e-03
+IMU.NoiseAcc: 1.70e-02
+IMU.GyroWalk: 1.9393e-05 
+IMU.AccWalk: 3.0000e-03 # 3e-03
+
+IMU.Frequency: 200
+
+#--------------------------------------------------------------------------------------------
+# ORB Parameters
+#--------------------------------------------------------------------------------------------
+ORBextractor.nFeatures: 1500
+ORBextractor.scaleFactor: 1.2
+ORBextractor.nLevels: 8
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters
+#--------------------------------------------------------------------------------------------
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1.0
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2.0
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3.0
+Viewer.ViewpointX: 0.0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -1.8
+Viewer.ViewpointF: 500.0

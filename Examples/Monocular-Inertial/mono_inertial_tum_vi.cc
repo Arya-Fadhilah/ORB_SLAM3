@@ -233,7 +233,6 @@ int main(int argc, char **argv)
     SLAM.Shutdown();
 
 
-    // Tracking time statistics
 
     // Save camera trajectory
 
@@ -241,13 +240,16 @@ int main(int argc, char **argv)
     {
         const string kf_file =  "kf_" + string(argv[argc-1]) + ".txt";
         const string f_file =  "f_" + string(argv[argc-1]) + ".txt";
+        const string pc_file = "pc_" + string(argv[argc-1]) + ".ply";
         SLAM.SaveTrajectoryEuRoC(f_file);
         SLAM.SaveKeyFrameTrajectoryEuRoC(kf_file);
+        SLAM.SavePointCloud(pc_file);
     }
     else
     {
         SLAM.SaveTrajectoryEuRoC("CameraTrajectory.txt");
         SLAM.SaveKeyFrameTrajectoryEuRoC("KeyFrameTrajectory.txt");
+        SLAM.SavePointCloud("PointCloud.ply");
     }
 
     sort(vTimesTrack.begin(),vTimesTrack.end());
