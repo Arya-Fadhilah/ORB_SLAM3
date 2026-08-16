@@ -1,4 +1,5 @@
 echo "Configuring and building Thirdparty/DBoW2 ..."
+exec > >(tee build_log.txt) 2>&1
 
 cd Thirdparty/DBoW2
 mkdir build
@@ -37,4 +38,4 @@ echo "Configuring and building ORB_SLAM3 ..."
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j4
+make -j1
