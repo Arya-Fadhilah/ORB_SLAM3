@@ -2867,6 +2867,7 @@ bool Tracking::TrackWithMotionModel()
     {
         // Predict state with IMU if it is initialized and it doesnt need reset
         PredictStateIMU();
+        //mCurrentFrame.RSCompensation(mRsRowTime);
         return true;
     }
     else
@@ -2911,6 +2912,7 @@ bool Tracking::TrackWithMotionModel()
 
     // Optimize frame pose with all matches
     Optimizer::PoseOptimization(&mCurrentFrame);
+    //mCurrentFrame.RSCompensation(mRsRowTime);
 
     // Discard outliers
     int nmatchesMap = 0;
